@@ -43,16 +43,21 @@
 	  (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
 	(make-QL 1 (list unit) null)))) ;; Basic unit
 
+;; Cancels out all elements in common in L
+(define (cancel L D) )
+
 (define (multiply a b)
-  (let ([a-qt (get-quant a)]
-	[a-num (get-num a)]
-	[a-den (get-den a)]
-	[b-qt (get-quant b)]
-	[b-num (get-num b)]
-	[b-den (get-den b)]
-	[num (append a-num b-num)]
-	[den (append a-den b-den)])
-    (make-QL (* a-qt b-qt)  (append a-den b-den))))
+  (let* ([a-qt (get-quant a)]
+	 [a-num (get-num a)]
+	 [a-den (get-den a)]
+	 [b-qt (get-quant b)]
+	 [b-num (get-num b)]
+	 [b-den (get-den b)]
+	 [num (append a-num b-num)]
+	 [den (append a-den b-den)]
+	 [cancelled-num (cancel num den)]
+	 [cancelled-den (cancel den num)])
+    (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
 
 (define (divide a b) ;; Multiply a by the reciprocal of b
   (let ([b-num (get-num b)]
