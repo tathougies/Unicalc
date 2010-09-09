@@ -43,8 +43,24 @@
 	  (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
 	(make-QL 1 (list unit) null)))) ;; Basic unit
 
-;; Cancels out all elements in common in L
-(define (cancel L D) )
+(define (cancel-unit num den ans)
+  (cond
+    [(null? num) (list ans den)]
+    [(memq (first num) den)(cancel-unit (rest num) (remove (first num) den) ans)]
+    [else (cancel-unit (rest num) den (cons (first num) ans))]
+    ))
+
+(test (cancel-unit '(joule second) '(second second) '()) '((joule)(second)))
+(test (cancel-unit '(second joule second) '(second second) '()) '((joule)()))
+(test (cancel-unit '(meters meters meters meters meters seconds meters seconds grams) '(meters meters meters seconds N grams grams) '()) '((seconds meters meters meters )(N grams)))
+
+(define (cancel num den)
+  (let [(l (cancel-unit num den '()))
+        (symbol<? (lambda (x y) (string<? (string-downcase (symbol->string x)) (string-downcase (symbol->string y)))))]
+       (list (sort (first l) symbol<?) (sort (second l) symbol<?))))
+
+
+(test (cancel '(seconds grams meters kilograms N) '()) '((grams kilograms meters N seconds) ()))
 
 (define (multiply a b)
   (let* ([a-qt (get-quant a)]
@@ -55,8 +71,9 @@
 	 [b-den (get-den b)]
 	 [num (append a-num b-num)]
 	 [den (append a-den b-den)]
-	 [cancelled-num (cancel num den)]
-	 [cancelled-den (cancel den num)])
+         [cancelled-numden (cancel num den)]
+	 [cancelled-num (first cancelled-numden)]
+	 [cancelled-den (second cancelled-numden)])
     (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
 
 (define (divide a b) ;; Multiply a by the reciprocal of b
