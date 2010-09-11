@@ -1,8 +1,9 @@
 ; CS 42 Homework 2, Problem 1: Unicalc
 ; Author(s): Travis Athougies and Peter Andrien
-; Time spent: [enter the time spent on this homework here]
+; Time spent: 6 hours
 
 ; Additional comments (optional):
+; See our git repository at http://github.com/iammisc/Unicalc
 
 ; Again you need the tester
 (load "tester.rkt")
