@@ -77,7 +77,7 @@
 (define (cancel-unit num den ans)
   (cond
     [(null? num) (list ans den)]
-    [(memq (first num) den)(cancel-unit (rest num) (remove (first num) den) ans)]
+    [(member (first num) den)(cancel-unit (rest num) (remove (first num) den) ans)]
     [else (cancel-unit (rest num) den (cons (first num) ans))]
     ))
 
