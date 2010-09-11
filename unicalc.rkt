@@ -43,15 +43,15 @@
 ;   A quantity list that expresses the unit in basic units
 (define (normalize-unit unit)
   (let ([next-unit (assoc unit unicalc-db)]) ;; Attempt to locate the unit in the unit database
-    (if next-unit 
-	(let* ([conv-info (second next-unit)]
-	       [factor (get-quant conv-info)] ;; Complex unit
-	       [numerators (get-num conv-info)] ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
-	       [denominators (get-den conv-info)]
-	       [normalized-numerator (product (map normalize-unit numerators))]
-	       [normalized-denominator (product (map normalize-unit denominators))])
-	  (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
-	(make-QL 1 (list unit) null)))) ;; Basic unit
+    (if next-unit
+      (let* ([conv-info (second next-unit)]
+             [factor (get-quant conv-info)] ;; Complex unit
+             [numerators (get-num conv-info)] ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
+             [denominators (get-den conv-info)]
+             [normalized-numerator (product (map normalize-unit numerators))]
+             [normalized-denominator (product (map normalize-unit denominators))])
+        (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
+      (make-QL 1 (list unit) null)))) ;; Basic unit
 
 ; Function name: normalize
 ; Input:
@@ -110,16 +110,16 @@
 ;   the product of a and b, as a normalized quantity list
 (define (multiply a b)
   (let* ([a-qt (get-quant a)]
-	 [a-num (get-num a)]
-	 [a-den (get-den a)]
-	 [b-qt (get-quant b)]
-	 [b-num (get-num b)]
-	 [b-den (get-den b)]
-	 [num (append a-num b-num)]
-	 [den (append a-den b-den)]
+         [a-num (get-num a)]
+         [a-den (get-den a)]
+         [b-qt (get-quant b)]
+         [b-num (get-num b)]
+         [b-den (get-den b)]
+         [num (append a-num b-num)]
+         [den (append a-den b-den)]
          [cancelled-numden (cancel num den)]
-	 [cancelled-num (first cancelled-numden)]
-	 [cancelled-den (second cancelled-numden)])
+         [cancelled-num (first cancelled-numden)]
+         [cancelled-den (second cancelled-numden)])
     (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
 
 ; Function name: divide
@@ -131,8 +131,8 @@
 ;  a by the reciprocal of b.
 (define (divide a b) ;; Multiply a by the reciprocal of b
   (let ([b-num (get-num b)]
-	[b-den (get-den b)]
-	[b-quant (get-quant b)])
+        [b-den (get-den b)]
+        [b-quant (get-quant b)])
     (multiply a (make-QL (/ 1 b-quant) b-den b-num))))
 
 ; Function name: add
@@ -168,10 +168,3 @@
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
-
-
-
-                   
-
-
-  
