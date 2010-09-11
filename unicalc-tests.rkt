@@ -22,7 +22,7 @@
        'second) 
        (make-QL 1 '(second) '()))
 
-(test (normalize-unit 
+(test (normalize-unit
        'gram) 
        (make-QL 0.001 '(kg) '()))
 
@@ -104,7 +104,4 @@
 
 (test (close-enough (subtract (normalize (make-QL 1 '(meter) '())) (normalize (make-QL 1 '(foot) '()))) 
                     (make-QL 0.69520550644 '(meter) '())) #t)
-
-(tester 'show)
-
 

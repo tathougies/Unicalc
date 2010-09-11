@@ -3,7 +3,6 @@
 ; Time spent: [enter the time spent on this homework here]
 
 ; Additional comments (optional):
-;
 
 ; Again you need the tester
 (load "tester.rkt")
@@ -28,13 +27,36 @@
 
 (define get-den third)
 
+; Some helper functions
+; Function name: list=?
+; Input:
+;   a - a list
+;   b - a list
+;   E - an equality function
+; Output:
+;   Returns true if the corresponding elements in a and b
+;   are equal, according to the results of E.
+(define (list=? a b E)
+  (let ([my-and (lambda (x y) (and x y))])
+    (if (= (length a) (length b))
+	   (foldl my-and #t (map E a b))
+	   #f)))
+
+; Function name: id
+; Input:
+;   x - anything
+; Output:
+;   A function that takes 1 argument that always returns x
+(define (id x)
+  (lambda (y) x))
+
 ;; Add your unicalc functions below.
 ; Function name: product
 ; Input:
 ;   L - a list of numbers
 ; Output:
 ;   The product of all the numbers in L
-(define (product L) (foldr multiply (make-QL 1 null null) L))
+(define (product L) (foldl multiply (make-QL 1 null null) L))
 
 ; Function name: normalize-unit
 ; Input:
@@ -77,7 +99,7 @@
 (define (cancel-unit num den ans)
   (cond
     [(null? num) (list ans den)]
-    [(member (first num) den)(cancel-unit (rest num) (remove (first num) den) ans)]
+    [(member (first num) den) (cancel-unit (rest num) (remove (first num) den) ans)]
     [else (cancel-unit (rest num) den (cons (first num) ans))]
     ))
 
@@ -98,7 +120,6 @@
   (let [(l (cancel-unit num den '()))
         (symbol<? (lambda (x y) (string<? (string-downcase (symbol->string x)) (string-downcase (symbol->string y)))))]
        (list (sort (first l) symbol<?) (sort (second l) symbol<?))))
-
 
 (test (cancel '(seconds grams meters kilograms N) '()) '((grams kilograms meters N seconds) ()))
 
@@ -122,6 +143,12 @@
          [cancelled-den (second cancelled-numden)])
     (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
 
+; Test alphabetical sorting once again
+(test (multiply (make-QL 6 '(kg second) '(meter meter))
+		(make-QL 7 '(ampere kg second second) '(meter)))
+      (make-QL 42 '(ampere kg kg second second second) '(meter meter meter)))
+(test (multiply '(1 ()()) '(2 (meter)(second))) '(2 (meter)(second)))
+
 ; Function name: divide
 ; Input:
 ;  a - a normalized quantity list
@@ -135,6 +162,31 @@
         [b-quant (get-quant b)])
     (multiply a (make-QL (/ 1 b-quant) b-den b-num))))
 
+; Function name: basic-add
+; Input:
+;   a - a normalized quantity list
+;   b - a normalized quantity list
+; Output:
+;   The sum of a and b, so long as the units of a and b are
+;   interconvertible. If no suitable conversion can be found,
+;   basic-add evaluates to #f
+(define (basic-add a b)
+   (let ([a-qt (get-quant a)] ; If both a and b are normalized, then both
+         [a-num (get-num a)]  ; a and b's denominator and numerator must
+         [a-den (get-den a)]  ; be exactly equal
+         [b-qt (get-quant b)]
+         [b-num (get-num b)]
+         [b-den (get-den b)])
+     (if (and (list=? a-num b-num symbol=?) (list=? a-den b-den symbol=?))
+	 (make-QL (+ a-qt b-qt) a-num a-den)
+	 #f)))
+
+(test (basic-add (make-QL 1 '(meter) '()) (make-QL 1 '(Newton) '())) #f) ; basic-add takes only *normalized* QL's
+(test (basic-add (make-QL 1 '(foot) '(second second)) (make-QL (- 4) '(foot) '(second second)))
+      (make-QL (- 3) '(foot) '(second second)))
+; Can't add incompatible units
+(test (basic-add (make-QL 1 '(foot) '(second)) (make-QL 2 '(foot) '(second second))) #f) 
+
 ; Function name: add
 ; Input:
 ;   a - a normalized quantity list
@@ -144,7 +196,8 @@
 ;   interconvertible. If no suitable conversion can be found,
 ;   an error is raised
 (define (add a b)
-  (make-QL 1 '() '()))
+  (let ([added (basic-add a b)])
+    (if added added (error "Illegal add" a b))))
 
 ; Function name: subtract
 ; Input:
@@ -155,7 +208,9 @@
 ;   a and the inverse of b. If the units of a and b are not
 ;   interconvertible, this function will complain
 (define (subtract a b)
-  (add a (make-QL (- (get-quant b)) (get-num b) (get-den b))))
+  (let* ([neg-b (make-QL (- (get-quant b)) (get-num b) (get-den b))]
+	 [added (basic-add a neg-b)])
+    (if added added (error "Illegal subtract" a b))))
 
 ; Function name: power
 ; Input:
@@ -163,8 +218,41 @@
 ;   p - an integer
 ; Output:
 ;   Returns a to the p'th power, with the proper units
-(define (power a p)
-  (make-QL 1 '() '()))
+; Implementation notes:
+;   The power operation is quite simple, since no unit
+;   checking need be done. Essentially, we repeat the
+;   numerator and denominator p times a to the p'th
+;   power
+(define (power a p) 
+  (let* ([a-qt (get-quant a)]
+	 [a-num (get-num a)]
+	 [a-den (get-den a)]
+	 [repeat (lambda (x) (build-list p (id x)))] ; Repeat repeats a value p times
+	 [new-num (flatten (repeat a-num))]
+	 [new-den (flatten (repeat a-den))]
+	 [cancelled (cancel new-num new-den)]) ; This puts new-num and new-den in alphabetic order
+    (make-QL (foldl * 1 (repeat a-qt))
+	     (first cancelled) ; Get the numerator out
+	     (second cancelled)))) ; Get the denominator
+
+(test (power (make-QL 4 '(meter) '(second)) 3) (make-QL 64 '(meter meter meter) '(second second second)))
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
+
+; The following tests depend on some functions defined in unicalc-tests.rkt
+(test (close-enough (power (make-QL 4.1 '(meter) '(second)) 3)
+		    (make-QL 68.920999999999978 
+			     '(meter meter meter) 
+			     '(second second second)))
+      #t)
+; Tests alphabetic order of normalized quantities in numerator and denominator
+(test (close-enough (power (make-QL 3.7 '(foot meter) '(ampere second second)) 2)
+		    (make-QL 13.69
+			     '(foot foot meter meter) 
+			     '(ampere ampere second second second second)))
+      #t)
+
+; The following line was moved from unicalc-tests.rkt, since we needed to run
+; some tests after loading the file
+(tester 'show)
