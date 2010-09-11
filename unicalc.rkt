@@ -237,6 +237,21 @@
 
 (test (power (make-QL 4 '(meter) '(second)) 3) (make-QL 64 '(meter meter meter) '(second second second)))
 
+; Function name: normalize
+; Input:
+;   quantity - a quantity list
+; Output:
+;   A quantity list that has been normalized into the most basic units
+(define (normalize quantity)
+  (let ([q (get-quant quantity)]
+        [n (get-num quantity)]
+        [d (get-den quantity)])
+    (multiply (make-QL q '()'())
+              (divide (product (map normalize-unit n))
+                      (product (map normalize-unit d))))))
+
+(test (normalize '(2 (newton meter)(second))) '(2 (kg meter meter) (second second second)))
+
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
 
