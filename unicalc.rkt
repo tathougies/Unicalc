@@ -50,6 +50,15 @@
 (define (id x)
   (lambda (y) x))
 
+; Function name: concat
+; Input:
+;   L - a list of lists
+; Output:
+;   A list containing all the elements of the lists
+;   in L
+(define (concat L)
+  (foldl append '() L))
+
 ;; Add your unicalc functions below.
 ; Function name: product
 ; Input:
@@ -228,8 +237,8 @@
 	 [a-num (get-num a)]
 	 [a-den (get-den a)]
 	 [repeat (lambda (x) (build-list p (id x)))] ; Repeat repeats a value p times
-	 [new-num (flatten (repeat a-num))]
-	 [new-den (flatten (repeat a-den))]
+	 [new-num (concat (repeat a-num))]
+	 [new-den (concat (repeat a-den))]
 	 [cancelled (cancel new-num new-den)]) ; This puts new-num and new-den in alphabetic order
     (make-QL (foldl * 1 (repeat a-qt))
 	     (first cancelled) ; Get the numerator out
