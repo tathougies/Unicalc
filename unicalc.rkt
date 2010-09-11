@@ -59,7 +59,7 @@
 ; Output:
 ;   A quantity list that has been normalized into the most basic units
 (define (normalize quantity)
-  (make-QL 0 '() '()))
+  (make-QL 1 '() '()))
 
 ; Function name: cancel-unit
 ; Input:
@@ -144,7 +144,7 @@
 ;   interconvertible. If no suitable conversion can be found,
 ;   an error is raised
 (define (add a b)
-  (make-QL 0 '() '()))
+  (make-QL 1 '() '()))
 
 ; Function name: subtract
 ; Input:
@@ -164,7 +164,7 @@
 ; Output:
 ;   Returns a to the p'th power, with the proper units
 (define (power a p)
-  (make-QL 0 '() '()))
+  (make-QL 1 '() '()))
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
