@@ -68,31 +68,6 @@
 ;   The product of all the numbers in L
 (define (product L) (foldl multiply (make-QL 1 null null) L))
 
-; Function name: normalize-unit
-; Input:
-;   unit - a symbol referencing a defined unit
-; Output:
-;   A quantity list that expresses the unit in basic units
-(define (normalize-unit unit)
-  (let ([next-unit (assoc unit unicalc-db)]) ;; Attempt to locate the unit in the unit database
-    (if next-unit
-      (let* ([conv-info (second next-unit)]
-             [factor (get-quant conv-info)] ;; Complex unit
-             [numerators (get-num conv-info)] ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
-             [denominators (get-den conv-info)]
-             [normalized-numerator (product (map normalize-unit numerators))]
-             [normalized-denominator (product (map normalize-unit denominators))])
-        (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
-      (make-QL 1 (list unit) null)))) ;; Basic unit
-
-; Function name: normalize
-; Input:
-;   quantity - a quantity list
-; Output:
-;   A quantity list that has been normalized into the most basic units
-(define (normalize quantity)
-  (make-QL 1 '() '()))
-
 ; Function name: cancel-unit
 ; Input:
 ;    num - a list of units in the numerator
@@ -157,7 +132,7 @@
 (test (multiply (make-QL 6 '(kg second) '(meter meter))
 		(make-QL 7 '(ampere kg second second) '(meter)))
       (make-QL 42 '(ampere kg kg second second second) '(meter meter meter)))
-(test (multiply '(1 ()()) '(2 (meter)(second))) '(2 (meter)(second)))
+(test (multiply (make-QL 1 '() '()) (make-QL 2 '(meter) '(second))) (make-QL 2 '(meter) '(second)))
 
 ; Function name: divide
 ; Input:
@@ -171,6 +146,8 @@
         [b-den (get-den b)]
         [b-quant (get-quant b)])
     (multiply a (make-QL (/ 1 b-quant) b-den b-num))))
+
+(test (divide (make-QL 1 '() '()) (make-QL 2 '(meter) '(second))) (make-QL (/ 1 2) '(second) '(meter)))
 
 ; Function name: basic-add
 ; Input:
@@ -195,7 +172,7 @@
 (test (basic-add (make-QL 1 '(foot) '(second second)) (make-QL (- 4) '(foot) '(second second)))
       (make-QL (- 3) '(foot) '(second second)))
 ; Can't add incompatible units
-(test (basic-add (make-QL 1 '(foot) '(second)) (make-QL 2 '(foot) '(second second))) #f) 
+(test (basic-add (make-QL 1 '(foot) '(second)) (make-QL 2 '(foot) '(second second))) #f)
 
 ; Function name: add
 ; Input:
@@ -208,6 +185,9 @@
 (define (add a b)
   (let ([added (basic-add a b)])
     (if added added (error "Illegal add" a b))))
+
+(test (add (make-QL 1 '(foot) '(second second)) (make-QL 4 '(foot) '(second second)))
+      (make-QL 5 '(foot) '(second second)))
 
 ; Function name: subtract
 ; Input:
@@ -222,6 +202,9 @@
 	 [added (basic-add a neg-b)])
     (if added added (error "Illegal subtract" a b))))
 
+(test (subtract (make-QL 1 '(foot) '(second second)) (make-QL 4 '(foot) '(second second)))
+      (make-QL (- 3) '(foot) '(second second)))
+
 ; Function name: power
 ; Input:
 ;   a - a normalized quantity list
@@ -233,7 +216,7 @@
 ;   checking need be done. Essentially, we repeat the
 ;   numerator and denominator p times a to the p'th
 ;   power
-(define (power a p) 
+(define (power a p)
   (let* ([a-qt (get-quant a)]
 	 [a-num (get-num a)]
 	 [a-den (get-den a)]
@@ -246,6 +229,26 @@
 	     (second cancelled)))) ; Get the denominator
 
 (test (power (make-QL 4 '(meter) '(second)) 3) (make-QL 64 '(meter meter meter) '(second second second)))
+
+; Function name: normalize-unit
+; Input:
+;   unit - a symbol referencing a defined unit
+; Output:
+;   A quantity list that expresses the unit in basic units
+(define (normalize-unit unit)
+  (let ([next-unit (assoc unit unicalc-db)]) ;; Attempt to locate the unit in the unit database
+    (if next-unit
+      (let* ([conv-info (second next-unit)]
+             [factor (get-quant conv-info)] ;; Complex unit
+             [numerators (get-num conv-info)] ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
+             [denominators (get-den conv-info)]
+             [normalized-numerator (product (map normalize-unit numerators))]
+             [normalized-denominator (product (map normalize-unit denominators))])
+        (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
+      (make-QL 1 (list unit) null)))) ;; Basic unit
+
+(test (normalize-unit 'kg) (make-QL 1 '(kg) '()))
+(test (normalize-unit 'kilogram) (make-QL 1 '(kg) '()))
 
 ; Function name: normalize
 ; Input:
@@ -267,14 +270,14 @@
 
 ; The following tests depend on some functions defined in unicalc-tests.rkt
 (test (close-enough (power (make-QL 4.1 '(meter) '(second)) 3)
-		    (make-QL 68.920999999999978 
-			     '(meter meter meter) 
+		    (make-QL 68.920999999999978
+			     '(meter meter meter)
 			     '(second second second)))
       #t)
 ; Tests alphabetic order of normalized quantities in numerator and denominator
 (test (close-enough (power (make-QL 3.7 '(foot meter) '(ampere second second)) 2)
 		    (make-QL 13.69
-			     '(foot foot meter meter) 
+			     '(foot foot meter meter)
 			     '(ampere ampere second second second second)))
       #t)
 
