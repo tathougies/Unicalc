@@ -43,14 +43,6 @@
 	   (foldl my-and #t (map E a b))
 	   #f)))
 
-; Function name: id
-; Input:
-;   x - anything
-; Output:
-;   A function that takes 1 argument that always returns x
-(define (id x)
-  (lambda (y) x))
-
 ; Function name: concat
 ; Input:
 ;   L - a list of lists
@@ -129,10 +121,10 @@
     (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
 
 ; Test alphabetical sorting once again
-(test (multiply (make-QL 6 '(kg second) '(meter meter))
-		(make-QL 7 '(ampere kg second second) '(meter)))
-      (make-QL 42 '(ampere kg kg second second second) '(meter meter meter)))
-(test (multiply (make-QL 1 '() '()) (make-QL 2 '(meter) '(second))) (make-QL 2 '(meter) '(second)))
+(test (multiply (make-QL 6.0 '(kg second) '(meter meter))
+		(make-QL 7.0 '(ampere kg second second) '(meter)))
+      (make-QL 42.0 '(ampere kg kg second second second) '(meter meter meter)))
+(test (multiply (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second))) (make-QL 2.0 '(meter) '(second)))
 
 ; Function name: divide
 ; Input:
@@ -147,7 +139,7 @@
         [b-quant (get-quant b)])
     (multiply a (make-QL (/ 1 b-quant) b-den b-num))))
 
-(test (divide (make-QL 1 '() '()) (make-QL 2 '(meter) '(second))) (make-QL (/ 1 2) '(second) '(meter)))
+(test (divide (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second))) (make-QL 0.5 '(second) '(meter)))
 
 ; Function name: basic-add
 ; Input:
@@ -168,11 +160,11 @@
 	 (make-QL (+ a-qt b-qt) a-num a-den)
 	 #f)))
 
-(test (basic-add (make-QL 1 '(meter) '()) (make-QL 1 '(Newton) '())) #f) ; basic-add takes only *normalized* QL's
-(test (basic-add (make-QL 1 '(foot) '(second second)) (make-QL (- 4) '(foot) '(second second)))
-      (make-QL (- 3) '(foot) '(second second)))
+(test (basic-add (make-QL 1.0 '(meter) '()) (make-QL 1.0 '(Newton) '())) #f) ; basic-add takes only *normalized* QL's
+(test (basic-add (make-QL 1.0 '(foot) '(second second)) (make-QL (- 4.0) '(foot) '(second second)))
+      (make-QL (- 3.0) '(foot) '(second second)))
 ; Can't add incompatible units
-(test (basic-add (make-QL 1 '(foot) '(second)) (make-QL 2 '(foot) '(second second))) #f)
+(test (basic-add (make-QL 1.0 '(foot) '(second)) (make-QL 2.0 '(foot) '(second second))) #f)
 
 ; Function name: add
 ; Input:
@@ -186,8 +178,8 @@
   (let ([added (basic-add a b)])
     (if added added (error "Illegal add" a b))))
 
-(test (add (make-QL 1 '(foot) '(second second)) (make-QL 4 '(foot) '(second second)))
-      (make-QL 5 '(foot) '(second second)))
+(test (add (make-QL 1.0 '(foot) '(second second)) (make-QL 4.0 '(foot) '(second second)))
+      (make-QL 5.0 '(foot) '(second second)))
 
 ; Function name: subtract
 ; Input:
@@ -202,13 +194,24 @@
 	 [added (basic-add a neg-b)])
     (if added added (error "Illegal subtract" a b))))
 
-(test (subtract (make-QL 1 '(foot) '(second second)) (make-QL 4 '(foot) '(second second)))
-      (make-QL (- 3) '(foot) '(second second)))
+(test (subtract (make-QL 1.0 '(foot) '(second second)) (make-QL 4.0 '(foot) '(second second)))
+      (make-QL (- 3.0) '(foot) '(second second)))
 
-; Function name: power
+; Function name: repeat
+; Input:
+;  n - a positive integer
+;  x - a value
+; Output:
+;  A list of length n filled with x
+(define (repeat n x)
+  (if (= n 0)
+      null
+      (cons x (repeat (- n 1) x))))
+
+; Function name: calc-power
 ; Input:
 ;   a - a normalized quantity list
-;   p - an integer
+;   p - an integer greater than 0
 ; Output:
 ;   Returns a to the p'th power, with the proper units
 ; Implementation notes:
@@ -216,19 +219,30 @@
 ;   checking need be done. Essentially, we repeat the
 ;   numerator and denominator p times a to the p'th
 ;   power
-(define (power a p)
+(define (calc-power a p)
   (let* ([a-qt (get-quant a)]
 	 [a-num (get-num a)]
 	 [a-den (get-den a)]
-	 [repeat (lambda (x) (build-list p (id x)))] ; Repeat repeats a value p times
-	 [new-num (concat (repeat a-num))]
-	 [new-den (concat (repeat a-den))]
+	 [new-num (concat (repeat p a-num))]
+	 [new-den (concat (repeat p a-den))]
 	 [cancelled (cancel new-num new-den)]) ; This puts new-num and new-den in alphabetic order
-    (make-QL (foldl * 1 (repeat a-qt))
+    (make-QL (foldl * 1 (repeat p a-qt))
 	     (first cancelled) ; Get the numerator out
 	     (second cancelled)))) ; Get the denominator
 
-(test (power (make-QL 4 '(meter) '(second)) 3) (make-QL 64 '(meter meter meter) '(second second second)))
+;; Function name: power
+;; Input:
+;;   a - a normalized quantity list
+;;   p - an exponent
+;; Output:
+;;   Returns a ^ p
+(define (power a p)
+  (cond
+   [(< p 0) (divide (make-QL 1.0 '() '()) (calc-power a (- p)))]
+   [(= p 0) (make-QL 1.0 '() '())]
+   [else (calc-power a p)]))
+
+(test (power (make-QL 4.0 '(meter) '(second)) 3) (make-QL 64.0 '(meter meter meter) '(second second second)))
 
 ; Function name: normalize-unit
 ; Input:
@@ -245,10 +259,10 @@
              [normalized-numerator (product (map normalize-unit numerators))]
              [normalized-denominator (product (map normalize-unit denominators))])
         (multiply (make-QL factor null null) (divide normalized-numerator normalized-denominator)))
-      (make-QL 1 (list unit) null)))) ;; Basic unit
+      (make-QL 1.0 (list unit) null)))) ;; Basic unit
 
-(test (normalize-unit 'kg) (make-QL 1 '(kg) '()))
-(test (normalize-unit 'kilogram) (make-QL 1 '(kg) '()))
+(test (normalize-unit 'kg) (make-QL 1.0 '(kg) '()))
+(test (normalize-unit 'kilogram) (make-QL 1.0 '(kg) '()))
 
 ; Function name: normalize
 ; Input:
@@ -263,7 +277,7 @@
               (divide (product (map normalize-unit n))
                       (product (map normalize-unit d))))))
 
-(test (normalize '(2 (newton meter)(second))) '(2 (kg meter meter) (second second second)))
+(test (normalize '(2.0 (newton meter)(second))) '(2.0 (kg meter meter) (second second second)))
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
