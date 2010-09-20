@@ -61,8 +61,6 @@
          (normalize (add (multiply w x) (power y 2))))
        (normalize (make-UQL 18.04 3.7119827 '(cm cm) '()))) #t)
 
-(tester 'show)
-
 
 
 

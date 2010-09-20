@@ -102,10 +102,11 @@
 
 ; Function name: multiply
 ; Input:
-;   a - a normalized quantity list
-;   b - a normalized quantity list
+;   a - a quantity list
+;   b - a quantity list
 ; Output:
-;   the product of a and b, as a normalized quantity list
+;   the product of a and b. The result will be normalized only
+;   if a and b are normalized
 (define (multiply a b)
   (let* ([a-qt (get-quant a)]
          [a-num (get-num a)]
@@ -128,8 +129,8 @@
 
 ; Function name: divide
 ; Input:
-;  a - a normalized quantity list
-;  b - a normalized quantity list
+;  a - a quantity list
+;  b - a quantity list
 ; Output:
 ;  The quotient of a and b. This is identical to multiplying
 ;  a by the reciprocal of b.
@@ -210,7 +211,7 @@
 
 ; Function name: calc-power
 ; Input:
-;   a - a normalized quantity list
+;   a - a quantity list
 ;   p - an integer greater than 0
 ; Output:
 ;   Returns a to the p'th power, with the proper units
@@ -281,6 +282,7 @@
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
+(load "unicalc-with-error-tests.rkt")
 
 ; The following tests depend on some functions defined in unicalc-tests.rkt
 (test (close-enough (power (make-QL 4.1 '(meter) '(second)) 3)
