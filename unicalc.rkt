@@ -1,32 +1,40 @@
-; CS 42 Homework 2, Problem 1: Unicalc
+; CS 42 Homework 3, Problem 1: Unicalc with Error
 ; Author(s): Travis Athougies and Peter Andrien
-; Time spent: 6 hours
+; Time spent: 2 hours
 
 ; Additional comments (optional):
 ; See our git repository at http://github.com/iammisc/Unicalc
 
 ; Again you need the tester
 (load "tester.rkt")
-; Be sure to download the unicalc database file
-(load "unicalc-db.rkt")
 
 ;; Data abstraction for a quantity list
-; Function: make-QL
+; Function: make-UQL
 ; Input:
 ;    quant - a number
+;    error - amount of uncertainty 
 ;    num - a list of symbols representing the units in the numerator
 ;    den - a list of symbols representing the units in the denominator
 ; Output:
-;    a representation of a quantity list
+;    a representation of an uncertain quantity list
+(define (make-UQL quant error num den)
+  (list quant error num den))
+
+; same as (make-UQL quant 0.0 num den)
 (define (make-QL quant num den)
-  (list quant num den))
+  (make-UQL quant 0.0 num den))
 
 ; Accessor functions for our QL abstraction
 (define get-quant first)
 
-(define get-num second)
+(define get-error second)
 
-(define get-den third)
+(define get-num third)
+
+(define get-den fourth)
+
+; Since the new unicalc db uses make-QL, it should be loaded after that is defined
+(load "unicalc-db.rkt")
 
 ; Some helper functions
 ; Function name: list=?
@@ -58,7 +66,7 @@
 ;   L - a list of numbers
 ; Output:
 ;   The product of all the numbers in L
-(define (product L) (foldl multiply (make-QL 1 null null) L))
+(define (product L) (foldl multiply (make-QL 1.0 null null) L))
 
 ; Function name: cancel-unit
 ; Input:
@@ -109,17 +117,27 @@
 ;   if a and b are normalized
 (define (multiply a b)
   (let* ([a-qt (get-quant a)]
+         [a-err (get-error a)]
          [a-num (get-num a)]
          [a-den (get-den a)]
          [b-qt (get-quant b)]
+         [b-err (get-error b)]
          [b-num (get-num b)]
          [b-den (get-den b)]
          [num (append a-num b-num)]
          [den (append a-den b-den)]
+         [Ex (/ a-err a-qt)]
+         [Ey (/ b-err b-qt)]
+         [new-error (sqrt (+ (* Ex Ex) (* Ey Ey)))]
+         [z (* a-qt b-qt)]
          [cancelled-numden (cancel num den)]
          [cancelled-num (first cancelled-numden)]
          [cancelled-den (second cancelled-numden)])
-    (make-QL (* a-qt b-qt) cancelled-num cancelled-den)))
+    (make-UQL z (* new-error z) cancelled-num cancelled-den)))
+
+; extra test
+(test (multiply (make-UQL 1.0 3.0 '(meters) '(seconds)) (make-UQL 1.0 4.0 '(seconds) '(meters)))
+      (make-UQL 1.0 5.0 '() '()))
 
 ; Test alphabetical sorting once again
 (test (multiply (make-QL 6.0 '(kg second) '(meter meter))
@@ -137,10 +155,33 @@
 (define (divide a b) ;; Multiply a by the reciprocal of b
   (let ([b-num (get-num b)]
         [b-den (get-den b)]
+        [b-error (get-error b)]
         [b-quant (get-quant b)])
-    (multiply a (make-QL (/ 1 b-quant) b-den b-num))))
+    ; For an explanation of why b-error is adjusted such see below
+    (multiply a (make-UQL (/ 1 b-quant) (/ b-error (* b-quant b-quant)) b-den b-num))))
 
-(test (divide (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second))) (make-QL 0.5 '(second) '(meter)))
+; The error in division is
+; z-err = sqrt((a-err/a-quant) ^ 2 + (b-err/b-quant) ^ 2) * z
+; Since we implement division through multiplication by 
+; the reciprocal, when we calculate error in the multiply function
+; b-quant ends up being the reciprocal of b, when in fact it should
+; be just b. Therefore we need a correction. We can calculate this
+; correction as follows, by solving for k.
+;
+; b-err/b-quant = ((k * b-err)/(1 / b-quant))
+;
+; By cross multiplying, we end up with
+;
+; b-err/b-quant = k(b-err)(b-quant)
+; 
+; Moving terms around, we end up with
+;
+; k = 1/(b-quant ^ 2)
+
+(test (divide (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second)))
+      (make-QL 0.5 '(second) '(meter)))
+(test (divide (make-UQL 1.0 4.0 '(meter) '(second)) (make-UQL 1.0 3.0 '(meter) '(second)))
+      (make-UQL 1.0 5.0 '() '()))
 
 ; Function name: basic-add
 ; Input:
@@ -151,15 +192,18 @@
 ;   interconvertible. If no suitable conversion can be found,
 ;   basic-add evaluates to #f
 (define (basic-add a b)
-   (let ([a-qt (get-quant a)] ; If both a and b are normalized, then both
-         [a-num (get-num a)]  ; a and b's denominator and numerator must
-         [a-den (get-den a)]  ; be exactly equal
-         [b-qt (get-quant b)]
-         [b-num (get-num b)]
-         [b-den (get-den b)])
+   (let* ([a-qt (get-quant a)]  ; If both a and b are normalized, then both
+          [a-err (get-error a)] ; a and b's denominator and numerator must
+          [a-num (get-num a)]   ; be exactly equal
+          [a-den (get-den a)]
+          [b-qt (get-quant b)]
+          [b-err (get-error b)]
+          [b-num (get-num b)]
+          [b-den (get-den b)]
+          [new-error (sqrt (+ (* a-err a-err) (* b-err b-err)))])
      (if (and (list=? a-num b-num symbol=?) (list=? a-den b-den symbol=?))
-	 (make-QL (+ a-qt b-qt) a-num a-den)
-	 #f)))
+         (make-UQL (+ a-qt b-qt) new-error a-num a-den)
+         #f)))
 
 (test (basic-add (make-QL 1.0 '(meter) '()) (make-QL 1.0 '(Newton) '())) #f) ; basic-add takes only *normalized* QL's
 (test (basic-add (make-QL 1.0 '(foot) '(second second)) (make-QL (- 4.0) '(foot) '(second second)))
@@ -177,7 +221,7 @@
 ;   an error is raised
 (define (add a b)
   (let ([added (basic-add a b)])
-    (if added added (error "Illegal add" a b))))
+    (if added added (list 'error "Illegal add" a b))))
 
 (test (add (make-QL 1.0 '(foot) '(second second)) (make-QL 4.0 '(foot) '(second second)))
       (make-QL 5.0 '(foot) '(second second)))
@@ -191,9 +235,9 @@
 ;   a and the inverse of b. If the units of a and b are not
 ;   interconvertible, this function will complain
 (define (subtract a b)
-  (let* ([neg-b (make-QL (- (get-quant b)) (get-num b) (get-den b))]
+  (let* ([neg-b (make-UQL (- (get-quant b)) (get-error b) (get-num b) (get-den b))]
 	 [added (basic-add a neg-b)])
-    (if added added (error "Illegal subtract" a b))))
+    (if added added (list 'error "Illegal subtract" a b))))
 
 (test (subtract (make-QL 1.0 '(foot) '(second second)) (make-QL 4.0 '(foot) '(second second)))
       (make-QL (- 3.0) '(foot) '(second second)))
@@ -231,19 +275,40 @@
 	     (first cancelled) ; Get the numerator out
 	     (second cancelled)))) ; Get the denominator
 
-;; Function name: power
+;; Function name: power-no-error
 ;; Input:
 ;;   a - a normalized quantity list
 ;;   p - an exponent
 ;; Output:
-;;   Returns a ^ p
-(define (power a p)
+;;   Returns a ^ p without proper error calculation
+(define (power-no-error a p)
   (cond
    [(< p 0) (divide (make-QL 1.0 '() '()) (calc-power a (- p)))]
    [(= p 0) (make-QL 1.0 '() '())]
    [else (calc-power a p)]))
 
-(test (power (make-QL 4.0 '(meter) '(second)) 3) (make-QL 64.0 '(meter meter meter) '(second second second)))
+(test (power-no-error (make-QL 4.0 '(meter) '(second)) 3) (make-QL 64.0 '(meter meter meter) '(second second second)))
+
+;; Function name: power
+;; Input:
+;;   a - a normalized quantity list
+;;   p - an exponent
+;; Output:
+;;   Returns a ^ p 
+(define (power a p)
+  (let* ([calcd (power-no-error a p)]
+         [quant (get-quant calcd)]
+         [num (get-num calcd)]
+         [den (get-den calcd)]
+         [a-err (get-error a)]
+         [a-quant (get-quant a)]
+         ; We use absolute value here, since taking the square root of a square 
+         ; is equivalent to the absolute value. Also exact->inexact is needed in
+         ; the case that p = 0 (since p is an integer). In this case, the racket
+         ; documentation defines anything multiplied by the integer 0, including
+         ; floating point numbers, to be equivalent to the integer 0, not 0.0
+         [error (exact->inexact (* quant (abs (* (/ a-err a-quant) p))))])
+    (make-UQL quant error num den)))
 
 ; Function name: normalize-unit
 ; Input:
@@ -272,16 +337,18 @@
 ;   A quantity list that has been normalized into the most basic units
 (define (normalize quantity)
   (let ([q (get-quant quantity)]
+        [err (get-error quantity)]
         [n (get-num quantity)]
         [d (get-den quantity)])
-    (multiply (make-QL q '()'())
+    (multiply (make-UQL q err '()'())
               (divide (product (map normalize-unit n))
                       (product (map normalize-unit d))))))
 
-(test (normalize '(2.0 (newton meter)(second))) '(2.0 (kg meter meter) (second second second)))
+(test (normalize (make-QL 2.0 '(newton meter)'(second))) (make-QL 2.0 '(kg meter meter) '(second second second)))
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")
+;; These Test Include Error Propagation.
 (load "unicalc-with-error-tests.rkt")
 
 ; The following tests depend on some functions defined in unicalc-tests.rkt
