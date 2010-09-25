@@ -90,7 +90,9 @@
 
 (test (cancel-unit '(joule second) '(second second) '()) '((joule)(second)))
 (test (cancel-unit '(second joule second) '(second second) '()) '((joule)()))
-(test (cancel-unit '(meters meters meters meters meters seconds meters seconds grams) '(meters meters meters seconds N grams grams) '()) '((seconds meters meters meters )(N grams)))
+(test (cancel-unit '(meters meters meters meters meters seconds meters seconds grams)
+		   '(meters meters meters seconds N grams grams) '())
+      '((seconds meters meters meters ) (N grams)))
 
 ; Function name: cancel
 ; Input:
@@ -103,10 +105,12 @@
 ;    in alphabetical order
 (define (cancel num den)
   (let [(l (cancel-unit num den '()))
-        (symbol<? (lambda (x y) (string<? (string-downcase (symbol->string x)) (string-downcase (symbol->string y)))))]
+        (symbol<? (lambda (x y) (string<? (string-downcase (symbol->string x)) 
+					  (string-downcase (symbol->string y)))))]
        (list (sort (first l) symbol<?) (sort (second l) symbol<?))))
 
-(test (cancel '(seconds grams meters kilograms N) '()) '((grams kilograms meters N seconds) ()))
+(test (cancel '(seconds grams meters kilograms N) '()) 
+      '((grams kilograms meters N seconds) ()))
 
 ; Function name: multiply
 ; Input:
@@ -143,7 +147,8 @@
 (test (multiply (make-QL 6.0 '(kg second) '(meter meter))
 		(make-QL 7.0 '(ampere kg second second) '(meter)))
       (make-QL 42.0 '(ampere kg kg second second second) '(meter meter meter)))
-(test (multiply (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second))) (make-QL 2.0 '(meter) '(second)))
+(test (multiply (make-QL 1.0 '() '()) (make-QL 2.0 '(meter) '(second)))
+      (make-QL 2.0 '(meter) '(second)))
 
 ; Function name: divide
 ; Input:
@@ -205,8 +210,10 @@
          (make-UQL (+ a-qt b-qt) new-error a-num a-den)
          #f)))
 
-(test (basic-add (make-QL 1.0 '(meter) '()) (make-QL 1.0 '(Newton) '())) #f) ; basic-add takes only *normalized* QL's
-(test (basic-add (make-QL 1.0 '(foot) '(second second)) (make-QL (- 4.0) '(foot) '(second second)))
+; basic-add takes only *normalized* QL's
+(test (basic-add (make-QL 1.0 '(meter) '()) (make-QL 1.0 '(Newton) '())) #f)
+(test (basic-add (make-QL 1.0 '(foot) '(second second))
+		 (make-QL (- 4.0) '(foot) '(second second)))
       (make-QL (- 3.0) '(foot) '(second second)))
 ; Can't add incompatible units
 (test (basic-add (make-QL 1.0 '(foot) '(second)) (make-QL 2.0 '(foot) '(second second))) #f)
@@ -287,7 +294,8 @@
    [(= p 0) (make-QL 1.0 '() '())]
    [else (calc-power a p)]))
 
-(test (power-no-error (make-QL 4.0 '(meter) '(second)) 3) (make-QL 64.0 '(meter meter meter) '(second second second)))
+(test (power-no-error (make-QL 4.0 '(meter) '(second)) 3)
+      (make-QL 64.0 '(meter meter meter) '(second second second)))
 
 ;; Function name: power
 ;; Input:
@@ -320,7 +328,8 @@
     (if next-unit
       (let* ([conv-info (second next-unit)]
              [factor (get-quant conv-info)] ;; Complex unit
-             [numerators (get-num conv-info)] ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
+	     ;; Our basic algorithm here is factor * (normalized numerators/normalized denominators)
+             [numerators (get-num conv-info)] 
              [denominators (get-den conv-info)]
              [normalized-numerator (product (map normalize-unit numerators))]
              [normalized-denominator (product (map normalize-unit denominators))])
@@ -344,7 +353,8 @@
               (divide (product (map normalize-unit n))
                       (product (map normalize-unit d))))))
 
-(test (normalize (make-QL 2.0 '(newton meter)'(second))) (make-QL 2.0 '(kg meter meter) '(second second second)))
+(test (normalize (make-QL 2.0 '(newton meter)'(second)))
+      (make-QL 2.0 '(kg meter meter) '(second second second)))
 
 ;; Load and run the tests
 (load "unicalc-tests.rkt")

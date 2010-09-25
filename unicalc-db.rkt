@@ -188,7 +188,7 @@
 (list 'pint                   (make-QL 0.5 '(quart) '()))
 (list 'point                  (make-QL 0.013837 '(inch) '()))
 (list 'poise                  (make-QL 0.1 '(pascal) '(second)))
-(list 'pound                  (make-QL 0.45359237 '(kg) ()))
+(list 'pound                  (make-QL 0.45359237 '(kg) '()))
 (list 'pound_force            (make-QL 1 '(pound free_acceleration) '()))
 (list 'poundal                (make-QL 1 '(foot pound) '(second second)))
 (list 'quadrant               (make-QL 90 '(degree) '()))
