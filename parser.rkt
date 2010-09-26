@@ -42,7 +42,6 @@
     (display "\n")
     output))
 
-
 ;; Function begins-with?
 ;; input: an element and a list
 ;; output: #t if the list L begins with the element elem, #f otherwise
@@ -87,7 +86,7 @@
   (list #t result residue))
 
 (define (fail residue)
-  (list #f () residue))
+  (list #f '() residue))
 
 ;; Function varname?.
 ;; input: token
@@ -125,8 +124,9 @@
 ;; E -> S | Val
 (define (parse-exp tokens)
   (let* ([sum-triple (parse-sum tokens)]
-         [sum-outcome (outcome sum-triple)])
-    (if sum-outcome
+         [sum-outcome (outcome sum-triple)]
+         [after-sum (residual sum-triple)])
+    (if (and sum-outcome (null? after-sum))
         sum-triple
         (parse-val tokens))))
 
@@ -251,8 +251,8 @@
          [amt (result triple)]
          [after-amt (residual triple)])
     (if have-amt
-        (if (begins-with? add-char after-amt)
-            (parse-uncertain-val amt after-amt)
+        (if (eq? plusminus-s (first after-amt))
+            (parse-uncertain-val amt (rest after-amt))
             (let* ([triple2 (parse-ul after-amt)]
                    [have-ul (outcome triple2)]
                    [unit-list (result triple2)]
@@ -272,23 +272,19 @@
 ;; Description: Takes an already parsed amount and attempts
 ;;              to parse the +- Amt UL part of the Val rule
 (define (parse-uncertain-val amt tokens)
-  (if (and (>= (length tokens) 3)            ;; Check for a plus or minus sign and
-           (equal? (first tokens) add-char) ;; at least enough tokens for amount
-           (equal? (second tokens) subtract-char))
-      (let* ([err-triple (parse-amt (rest (rest tokens)))]
-             [have-err (outcome err-triple)]
-             [after-err (residual err-triple)])
-        (if have-err
-            (let* ([ul-triple (parse-ul after-err)]
-                   [have-ul (outcome ul-triple)]
-                   [ul (result ul-triple)]
-                   [num (first ul)]
-                   [den (second ul)])
-              (if have-ul
-                  (succeed (make-UQL amt (result err-triple) num den) (residual ul-triple))
-                  (fail after-err)))
-            (fail (rest (rest tokens)))))
-      (fail tokens)))
+  (let* ([err-triple (parse-amt tokens)]
+	 [have-err (outcome err-triple)]
+	 [after-err (residual err-triple)])
+    (if have-err
+	(let* ([ul-triple (parse-ul after-err)]
+	       [have-ul (outcome ul-triple)]
+	       [ul (result ul-triple)]
+	       [num (first ul)]
+	       [den (second ul)])
+	  (if have-ul
+	      (succeed (make-UQL amt (result err-triple) num den) (residual ul-triple))
+	      (fail after-err)))
+	(fail (rest tokens)))))
 
 ;; parse-amt
 ;; input: a list of tokens
@@ -356,13 +352,13 @@
 (test (parse-input '("var")) (succeed 'var '()))
 
 (test (parse-exp '(14 "meters")) (parse-val '(14 "meters")))
-(test (parse-exp '(14 + 2)) (parse-sum '(14 + 2)))
-(test (parse-exp '(14 "meters" - 2 "feet")) (parse-sum '(14 "meters" - 2 "feet")))
+(test (parse-exp '(14 #\+ 2)) (parse-sum '(14 #\+ 2)))
+(test (parse-exp '(14 #\- 2)) (parse-sum '(14 #\- 2)))
 
-(test (parse-sum '(14 "meters" * 2)) (parse-product '(14 "meters" * 2)))
-(test (parse-sum '(14 "meters" / 2)) (parse-product '(14 "meters" / 2)))
-(test (parse-sum '(14 "meters")) (parse-val '(14 "meters")))
-(test (parse-sum '(14 "meters" + 12 "meters" - 4 "feet")) '(+ (14 0 (meters) ()) (- (12 0 (meters) ()) (14 0 (meters) ()))))
+(test (parse-sum '(14 #\* 2)) (parse-product '(14 #\* 2)))
+(test (parse-sum '(14 #\/ 2)) (parse-product '(14 #\/ 2)))
+(test (parse-sum '(14)) (parse-amt '(14)))
+(test (parse-sum '(14 #\+ 12 #\- 4)) '(#t (+ 14 (- 12 4)) ()))
 
 ;; Tests for the parser.  You should add at least 2 more.
 (test (parse "x = 42+-0 meter") '(#t (= x (42 0 (meter) ())) ()))

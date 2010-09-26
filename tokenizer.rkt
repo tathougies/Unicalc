@@ -61,7 +61,7 @@
    (begins-with? add-char input)
    (begins-with? subtract-char input)
    (begins-with? equal-char input)
-   (begins-with? exponent-char input) 
+   (begins-with? exponent-char input)
    (begins-with? norm-char input)
    (begins-with? left-paren input)
    (begins-with? right-paren input)))
@@ -79,7 +79,11 @@
      (cond   ;; arithmetic operators are singleton tokens
        ((null? input) (list '() '()))
        ((begins-with-valid-single-char? input)
-        (list (first input) (rest input)))
+	(if (equal? (first input) add-char)
+	    (if (equal? (second input) subtract-char)
+		(list '+- (rest (rest input)))
+		(list (first input) (rest input)))
+	    (list (first input) (rest input))))
        ;; otherwise, keep accumulating the token until we see space
        (else (split-token-no-white 
               (rest input) 
